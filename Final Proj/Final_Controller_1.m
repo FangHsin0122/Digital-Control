@@ -1,0 +1,153 @@
+close all; clear all;
+
+Ts_sec = 33.4/1000; %sec
+t_x_sec = [0, 33.4, 66.7, 100.1, 133.5, 166.9, 200.2, 233.6, 267.0, 300.4, 333.7, 367.1, 400.5, 433.8, 467.2, 500.6, 534.0, 567.3, 600.7, 634.1, 667.5, 700.8, 734.2]/1000;  % secst
+
+pos_y_pixels = [0, 5, 16, 8, 5, 12, 10, 7, 8, 11, 10, 8, 9, 10, 9, 9, 9, 9, 9, 9, 9, 9, 9].';
+
+input_step_rt = 110; %counts
+
+figure(1)
+plot(t_x_sec, pos_y_pixels, 'o-', 'DisplayName', 'Measured Step Response');
+xlabel('Time (s)');
+ylabel('Output Positions (pixels)');
+title('Measured Step Resp (Origin)');
+legend('Location','Best');
+grid on;
+%hold on;
+
+
+u = input_step_rt * ones(length(pos_y_pixels), 1); % step input
+data = iddata(pos_y_pixels, u, Ts_sec); % Identification dataset
+t = (0 : length(pos_y_pixels)-1)* Ts_sec; % time vector in SECONDS for the non-delayed data
+%t
+
+figure(2)
+% --- Compare with measured step response ---
+plot(t, pos_y_pixels, 'ko', 'DisplayName', 'Measured Data(c2d)');
+hold on;
+
+sys_C22 = tfest(data, 2, 2); % continuous time controller
+sys_D22 = c2d(sys_C22, Ts_sec, 'zoh') % discrete time controller
+[plant_num, plant_den] = tfdata(sys_D22, 'v'); 
+[y_model, t_model] = step(input_step_rt * sys_D22, t_x_sec(end));
+%
+plot(t_model, y_model, '-', 'DisplayName', 'Model - 2p2z');
+
+xlabel('Time (s)');
+ylabel('Output Positions (pixels)');
+title('Measured Data vs My Model (Negelect Delay)');
+legend('Location','Best');
+grid on;
+
+%%
+
+figure(3)
+rlocus(sys_D22);grid on;axis equal;
+
+figure(4)
+bode(sys_D22)
+
+figure(5)
+nyquist(sys_D22)
+
+%%
+%{
+ζ = zeta: damping ratio
+Tr: rise time = 1.8/ omega_n, for zeta = 0.5
+Tp: peak time = pi/ (omega_n * sqrt(1 - zeta^2))
+Ts: settling time = 4/ (zeta* omeaga_n)
+Mp: overshoot = exp(- pi* zeta / ( sqrt(1 - zeta^2)))
+
+r: magnitude = exp(- zeta* omega_n* T)
+theta: phase = omega_n* T* ( sqrt(1 - zeta^2))
+THEN, 
+zeta = -ln(r)/(sqrt(theta^2 + (ln(r))^2)
+omega_n = 1/T * (sqrt(theta^2 + (ln(r))^2)
+tau: time constant = 1/(zeta* omega_n) = -T/ln(r)
+%}
+
+%% Get step response charateristic
+
+StepINFO = stepinfo(y_model,t_model)
+
+Mp = StepINFO.Overshoot;
+Tsettling = StepINFO.SettlingTime;
+Tr = StepINFO.RiseTime;
+
+y_final = y_model(end)
+
+%% Controller Design
+
+%{
+sys_C22 = tfest(data, 2, 2); % continuous time controller
+step_sys_D22 = c2d(sys_C22, Ts_sec, 'zoh') % discrete time controller
+[y_model, t_model] = step(input_step_rt * step_sys_D22, t_x_sec(end));
+%}
+
+s = tf('s');
+z = tf('z', Ts_sec);
+Gp = sys_D22; % plant
+
+%% PI/ PID controller
+Kp = 1;
+Ki = 1;
+Kd = 4;
+
+sys_Dpid = Kp + Ki*Ts_sec/(z-1) + Kd/Ts_sec*((z-1)/z) % discrete time controller
+
+Gc = sys_Dpid; % controller
+
+OL = Gp*Gc
+%pole(OL)
+%pole(minreal(OL))
+
+%% Lead Controller
+Gp = sys_D22; % plant
+
+pld = 0.35;
+zld = 0.75;
+plg = 0.995;
+zlg= 0.9;
+K = 0.003;
+
+Gc = K *(((z-pld)*(z-plg)) /((z-zld) * (z-zlg)));
+
+OL = Gp*Gc
+
+%%
+
+figure(6)
+rlocus(OL);grid on;axis equal;
+
+%%
+figure(18)
+rlocus(OL);grid on;axis equal;
+
+%%
+figure(7)
+bode(OL);grid on;
+
+%%
+figure(8)
+nyquist(OL);grid on;
+
+%%
+
+CL_r2u = feedback(Gc, Gp) % r->u -- <=200 counts
+CL_r2y = feedback(Gp*Gc, 1) % r->y -- 9 pixels
+
+
+figure(9)
+step(9 * CL_r2u, t_x_sec(end))
+figure(10)
+step(9 * CL_r2y, t_x_sec(end))
+%plot(ut, u, '-', 'DisplayName', sprintf('CL_r2u; PI; Kp = %.3f; Ki = %.3f; Kd = %.3f', Kp, Ki, Kd));
+%plot(ut, u, '-', 'DisplayName', sprintf('CL_r2u; PI; Kp = %.3f; Ki = %.3f; Kd = %.3f', Kp, Ki, Kd));
+
+%xlabel('Time (s)');
+%ylabel('Output Positions (pixels)');
+%title('Step Response PID Controller');
+%legend('Location','Best');grid on;
+
+%stepinfo(y_pid,t_pid)

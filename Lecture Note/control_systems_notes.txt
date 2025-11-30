@@ -1,0 +1,78 @@
+\documentclass{article}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\begin{document}
+
+\section*{ECE 5610: Digital Control Systems}
+
+\subsection*{Control System}
+A system designed to cause the output of a dynamic system (``the plant'') to achieve a desirable behavior by manipulating some inputs (the ``control'' inputs).
+
+\subsection*{Example 1}
+An automatic landing system that manipulates the elevator angle and the throttle to keep the airplane in a desired flight path.
+
+\begin{center}
+\begin{tikzpicture}
+  \draw[thick] (0,0) -- (5,0);
+  \draw[->, thick] (2.5,0) -- (4,1);
+  \node at (4.3,1.2) {\small airplane};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Example 2}
+A toaster: Here the controller (a timer) decides the amount of time that the toaster stays on, based upon the ``darkness'' setting.
+
+\begin{center}
+\begin{tikzpicture}
+  \draw[rounded corners, thick] (0,0) rectangle (3,2);
+  \draw[thick] (1,2) rectangle (2,2.7);
+  \node at (1.5,1) {\small Toaster};
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Elements of a Control System}
+\begin{enumerate}[label=(\arabic*)]
+    \item \textbf{Plant:} The system or process to be controlled (i.e. airplane).
+    \item \textbf{Sensor:} To measure the ``behavior'' of the plant (i.e. deviation from the desired flight path).
+    \item \textbf{Controller:} Decides the values of the inputs to the plant based upon the command.
+\end{enumerate}
+
+\subsection*{Question}
+Do we always need these three components?\\
+\textbf{Answer:} No. Obviously we need (1) and (3), but (2) may be missing.
+
+\subsection*{Configurations}
+\paragraph{Open Loop Control (no need for sensors):}
+\begin{center}
+\begin{tikzpicture}[node distance=2cm, auto]
+  \node (command) {command};
+  \node[draw, rectangle, right of=command] (controller) {Controller};
+  \node[draw, rectangle, right of=controller] (plant) {Plant};
+  \node[right of=plant] (output) {output};
+
+  \draw[->] (command) -- (controller);
+  \draw[->] (controller) -- node {control action} (plant);
+  \draw[->] (plant) -- (output);
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Closed Loop Control:}
+\begin{center}
+\begin{tikzpicture}[node distance=2cm, auto]
+  \node (desired) {desired response};
+  \node[draw, rectangle, right of=desired, node distance=3cm] (controller) {Controller};
+  \node[draw, rectangle, right of=controller, node distance=3cm] (plant) {Plant};
+  \node[right of=plant, node distance=3cm] (output) {Actual output};
+  \node[below of=plant, node distance=2cm, draw, rectangle] (sensor) {Sensor};
+
+  \draw[->] (desired) -- node {error} (controller);
+  \draw[->] (controller) -- node {control action} (plant);
+  \draw[->] (plant) -- (output);
+  \draw[->] (output) |- (sensor);
+  \draw[->] (sensor) -| (controller);
+\end{tikzpicture}
+\end{center}
+
+\end{document}
